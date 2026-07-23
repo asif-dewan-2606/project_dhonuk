@@ -1,0 +1,8 @@
+apache-airflow-providers-postgres
+apache-airflow-providers-common-sql
+apache-airflow-providers-docker
+astronomer-cosmos
+dbt-core
+dbt-clickhouse
+clickhouse-connect
+confluent-kafka
