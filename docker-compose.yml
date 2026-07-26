@@ -6,10 +6,13 @@ x-airflow-common: &airflow-common
   env_file:
     - .env
   environment:
+    AIRFLOW_UID: "50000"
+    AIRFLOW_HOME: /opt/airflow
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-    AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/logs:/opt/airflow/logs
@@ -115,14 +118,8 @@ services:
     <<: *airflow-common
     command: >
       bash -c "
-      airflow db migrate &&
-      airflow users create
-      --username airflow
-      --password airflow
-      --firstname Admin
-      --lastname User
-      --role Admin
-      --email admin@example.com
+        airflow db migrate &&
+        airflow users create --username airflow --password airflow --firstname Airflow --lastname Admin --role Admin --email airflow@example.com
       "
 
   airflow-apiserver:

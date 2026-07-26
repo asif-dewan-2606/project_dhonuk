@@ -1,3 +1,3 @@
 confluent-kafka
 faker
-pandas
+clickhouse-connect

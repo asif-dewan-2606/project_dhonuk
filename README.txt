@@ -8,3 +8,5 @@ docker build -t dhonuk-airflow:3.1.6 -f images/airflow/Dockerfile .
 -- after building run the following
 
 docker compose up -d
+
+-- git ssh push
