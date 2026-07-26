@@ -35,6 +35,23 @@ x-producer-common: &producer-common
   networks:
     - dhonuk-network
 
+x-consumer-common: &consumer-common
+  image: dhonuk-consumer:1.0
+
+  env_file:
+    - .env
+
+  depends_on:
+    kafka:
+      condition: service_started
+
+    clickhouse:
+      condition: service_started
+
+  networks:
+    - dhonuk-network
+
+
 services:
 
   postgres-airflow:
@@ -104,10 +121,12 @@ services:
     ports:
       - "8123:8123"
       - "9000:9000"
+
     environment:
       CLICKHOUSE_DB: analytics
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_USER: dhonuk
+      CLICKHOUSE_PASSWORD: dhonuk123
+
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/init:/docker-entrypoint-initdb.d
@@ -150,9 +169,35 @@ services:
 
   producer:
     <<: *producer-common
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: sales_transactions
     volumes:
       - ./producer/src:/app/src
-    command: tail -f /dev/null
+    command: python /app/src/main.py
+    
+  consumer:
+    <<: *consumer-common
+
+    build:
+      context: .
+      dockerfile: images/consumer/Dockerfile
+
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: sales_transactions
+
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_DATABASE: analytics
+      CLICKHOUSE_USER: dhonuk
+      CLICKHOUSE_PASSWORD: dhonuk123
+
+    volumes:
+      - ./consumer/src:/app/src
+
+    command: python /app/src/main.py
+
 
 networks:
   dhonuk-network:
