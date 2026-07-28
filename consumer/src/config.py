@@ -23,7 +23,7 @@ CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "clickhouse")
 CLICKHOUSE_PORT = int(os.getenv("CLICKHOUSE_PORT", 8123))
 
 CLICKHOUSE_DATABASE = os.getenv("CLICKHOUSE_DATABASE", "analytics")
-CLICKHOUSE_TABLE = os.getenv("CLICKHOUSE_TABLE", "sales_transactions")
+CLICKHOUSE_TABLE = os.getenv("CLICKHOUSE_TABLE", "ias_dfs_txn_log")
 
 CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "dhonuk")
 CLICKHOUSE_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "dhonuk123")

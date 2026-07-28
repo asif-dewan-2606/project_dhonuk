@@ -93,6 +93,10 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      
+      # Retention
+      KAFKA_LOG_RETENTION_HOURS: 10
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
 
       KAFKA_LOG_DIRS: /var/lib/kafka/data
 
@@ -169,6 +173,10 @@ services:
 
   producer:
     <<: *producer-common
+    build:
+      context: .
+      dockerfile: images/producer/Dockerfile
+
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC: sales_transactions
