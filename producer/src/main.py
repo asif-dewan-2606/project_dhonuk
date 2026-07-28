@@ -21,6 +21,7 @@ def main():
 
             transaction = generator.generate()
 
+           
             publisher.publish(transaction)
 
             time.sleep(1 / EVENTS_PER_SECOND)

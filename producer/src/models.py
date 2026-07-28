@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict
 from datetime import datetime
+import json
 
 
 @dataclass(slots=True)
@@ -41,10 +42,11 @@ class Transaction:
 
     def to_dict(self):
         return asdict(self)
-    
+
+
     def to_json(self):
-
-        import json
-
-        return json.dumps(self.to_dict())
+        return json.dumps(
+            self.to_dict(),
+            default=lambda obj: obj.isoformat()
+        )
         
