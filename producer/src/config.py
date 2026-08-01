@@ -19,3 +19,5 @@ MAX_AMOUNT = 5000
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
 KAFKA_TOPIC = "sales_transactions"
+
+SOURCE = "transaction"

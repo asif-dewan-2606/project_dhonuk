@@ -1,10 +1,5 @@
-from config import (
-    KAFKA_BOOTSTRAP_SERVERS,
-    KAFKA_TOPIC
-)
-
-from .console import ConsolePublisher
-from .kafka import KafkaPublisher
+from publishers.console import ConsolePublisher
+from publishers.kafka import KafkaPublisher
 
 
 def get_publisher(name):
@@ -13,11 +8,6 @@ def get_publisher(name):
         return ConsolePublisher()
 
     if name == "kafka":
-        return KafkaPublisher(
-            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-            topic=KAFKA_TOPIC
-        )
+        return KafkaPublisher()
 
-    raise ValueError(
-        f"Unknown publisher: {name}"
-    )
+    raise ValueError(f"Unknown publisher: {name}")

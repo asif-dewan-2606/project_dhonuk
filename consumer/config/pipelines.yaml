@@ -1,0 +1,19 @@
+enabled: true
+
+name: oracle-clickhouse
+
+topic: oracle.IAS_DFS_TXN_LOG
+
+type: clickhouse
+
+batch:
+  size: 10000
+  flush_interval: 5
+  max_buffer_size: 50000
+
+sink:
+  type: clickhouse
+
+  database: analytics
+
+  table: ias_dfs_txn_log_test

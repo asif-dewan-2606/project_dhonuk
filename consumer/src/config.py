@@ -1,29 +1,27 @@
-import os
+from pathlib import Path
+from types import SimpleNamespace
 
-# ------------------------
-# Kafka
-# ------------------------
+import yaml
 
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "sales_transactions")
-KAFKA_CONSUMER_GROUP = os.getenv("KAFKA_CONSUMER_GROUP", "sales-consumer-group")
 
-# ------------------------
-# Batch
-# ------------------------
+BASE_DIR = Path(__file__).resolve().parent.parent
+CONFIG_DIR = BASE_DIR / "config"
 
-BATCH_SIZE = 500
-BATCH_TIMEOUT_MS = 100
 
-# ------------------------
-# ClickHouse
-# ------------------------
+def _namespace(obj):
+    if isinstance(obj, dict):
+        return SimpleNamespace(**{k: _namespace(v) for k, v in obj.items()})
 
-CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "clickhouse")
-CLICKHOUSE_PORT = int(os.getenv("CLICKHOUSE_PORT", 8123))
+    if isinstance(obj, list):
+        return [_namespace(item) for item in obj]
 
-CLICKHOUSE_DATABASE = os.getenv("CLICKHOUSE_DATABASE", "analytics")
-CLICKHOUSE_TABLE = os.getenv("CLICKHOUSE_TABLE", "ias_dfs_txn_log")
+    return obj
 
-CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "dhonuk")
-CLICKHOUSE_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "dhonuk123")
+
+def load_yaml(filename: str):
+    with open(CONFIG_DIR / filename, "r", encoding="utf-8") as file:
+        return _namespace(yaml.safe_load(file))
+
+
+config = load_yaml("application.yaml")
+pipeline = load_yaml("pipelines.yaml")

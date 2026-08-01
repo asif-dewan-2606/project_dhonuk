@@ -1,38 +1,16 @@
-import time
+from manager import PipelineManager
 
-from config import EVENTS_PER_SECOND, PUBLISHER
-from generator import TransactionGenerator
-from publishers.factory import get_publisher
+from pipelines.factory import get_pipelines
 
-
-generator = TransactionGenerator()
-publisher = get_publisher(PUBLISHER)
-
-interval = 1 / EVENTS_PER_SECOND
 
 def main():
 
-    generator = TransactionGenerator()
-    publisher = get_publisher(PUBLISHER)
+    manager = PipelineManager()
 
-    try:
+    for pipeline in get_pipelines():
+        manager.add_pipeline(pipeline)
 
-        while True:
-
-            transaction = generator.generate()
-
-           
-            publisher.publish(transaction)
-
-            time.sleep(1 / EVENTS_PER_SECOND)
-
-    except KeyboardInterrupt:
-
-        print("\nStopping producer...")
-
-    finally:
-
-        publisher.close()
+    manager.start()
 
 
 if __name__ == "__main__":

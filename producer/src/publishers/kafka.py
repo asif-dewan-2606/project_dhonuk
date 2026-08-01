@@ -31,11 +31,11 @@ class KafkaPublisher(Publisher):
         if err:
             print(f"Delivery failed: {err}")
 
-    def publish(self, transaction):
+    def publish(self, message):
 
         self.producer.produce(
             topic=self.topic,
-            value=transaction.to_json(),
+            value=message.to_json(),
             callback=self.delivery_report
         )
 

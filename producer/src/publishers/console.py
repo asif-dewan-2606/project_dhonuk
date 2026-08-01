@@ -5,11 +5,11 @@ from .base import Publisher
 
 class ConsolePublisher(Publisher):
 
-    def publish(self, transaction):
+    def publish(self, message):
 
         print(
             json.dumps(
-                transaction.to_dict(),
+                message.to_dict(),
                 indent=2
             )
         )
