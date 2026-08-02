@@ -1,0 +1,5 @@
+confluent-kafka==2.6.1
+sqlalchemy
+oracledb
+psycopg2-binary
+pyyaml

@@ -1,0 +1,40 @@
+{
+  "name": "oracle-ias-dfs-txn-log",
+
+  "config": {
+
+    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+
+    "tasks.max": "1",
+
+    "connection.url": "jdbc:oracle:thin:@//10.220.24.131:8385/BISTG.NAGAD.COM.BD",
+    "connection.user": "BI_REPORTS",
+    "connection.password": "*Bi_Reports123#",
+
+    "query": "SELECT * FROM BI_REPORTS.IAS_DFS_TXN_LOG",
+
+    "mode": "timestamp",
+    "timestamp.column.name": "UPDATED",
+
+    "topic.prefix": "oracle.",
+
+    "poll.interval.ms": "5000",
+    "batch.max.rows": "1000",
+
+    "numeric.mapping": "best_fit",
+
+    "validate.non.null": "false",
+
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+    "key.converter.schemas.enable": "true",
+    "value.converter.schemas.enable": "true",
+
+    "transforms": "RenameTopic",
+    "transforms.RenameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.RenameTopic.regex": "oracle\\.",
+    "transforms.RenameTopic.replacement": "oracle.BI_REPORTS.IAS_DFS_TXN_LOG"
+
+  }
+}

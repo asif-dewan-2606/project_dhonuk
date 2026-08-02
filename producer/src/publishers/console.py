@@ -1,18 +1,14 @@
 import json
 
-from .base import Publisher
+from publishers.base import Publisher
 
 
 class ConsolePublisher(Publisher):
+    """Prints transactions to stdout - used for local testing, so this
+    intentionally uses print() rather than logging."""
 
-    def publish(self, message):
+    def publish(self, transaction):
+        print(json.dumps(transaction.to_dict(), indent=2, default=str))
 
-        print(
-            json.dumps(
-                message.to_dict(),
-                indent=2
-            )
-        )
-    
     def close(self):
         pass

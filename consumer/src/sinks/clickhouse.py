@@ -1,52 +1,61 @@
-from clickhouse_connect import get_client
+import logging
+import time
+from typing import Any
 
-from config import config
+import clickhouse_connect
+
 from sinks.base import Sink
+
+logger = logging.getLogger(__name__)
 
 
 class ClickHouseSink(Sink):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        database: str,
+        user: str,
+        password: str,
+        table: str,
+        columns: list[str],
+        max_retries: int = 3,
+        retry_backoff_seconds: float = 2.0,
+    ):
+        self.table = table
+        self.columns = columns
+        self.max_retries = max_retries
+        self.retry_backoff_seconds = retry_backoff_seconds
 
-    def __init__(self, pipeline_config):
-
-        super().__init__(pipeline_config)
-
-        self.client = get_client(
-            host=config.clickhouse.host,
-            port=config.clickhouse.port,
-            username=config.clickhouse.username,
-            password=config.clickhouse.password,
+        self.client = clickhouse_connect.get_client(
+            host=host,
+            port=port,
+            username=user,
+            password=password,
+            database=database,
         )
 
-        self.database = pipeline_config.sink.database
-        self.table = pipeline_config.sink.table
-
-    def write(self, records):
-
+    def write(self, records: list[dict[str, Any]]) -> None:
         if not records:
-            return True
+            return
 
-        try:
+        rows = [[record.get(col) for col in self.columns] for record in records]
 
-            column_names = list(records[0].keys())
+        attempt = 0
+        while True:
+            attempt += 1
+            try:    
 
-            rows = [
-                [record[col] for col in column_names]
-                for record in records
-            ]
+                self.client.insert(table=self.table, data=rows, column_names=self.columns)
+                return
+            except Exception:
+                logger.exception(
+                    "ClickHouse insert failed (attempt %d/%d, %d rows)",
+                    attempt, self.max_retries, len(rows),
+                )
+                if attempt >= self.max_retries:
+                    raise
+                time.sleep(self.retry_backoff_seconds * attempt)
 
-            self.client.insert(
-                table=f"{self.database}.{self.table}",
-                data=rows,
-                column_names=column_names,
-            )
-
-            return True
-
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            return False
-    
-    def close(self):
-
+    def close(self) -> None:
         self.client.close()

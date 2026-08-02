@@ -1,0 +1,24 @@
+kafka:
+  bootstrap_servers: kafka:9092
+  consumer_group: sales-consumer-group
+
+clickhouse:
+  host: clickhouse
+  port: 8123
+  database: analytics
+  user: dhonuk
+  password: ${CLICKHOUSE_PASSWORD}
+
+postgres:
+  host: postgres
+  port: 5432
+  database: analytics
+  user: ${POSTGRES_USER}
+  password: ${POSTGRES_PASSWORD}
+
+ozone:
+  endpoint: ${OZONE_ENDPOINT}
+  bucket: ${OZONE_BUCKET}
+
+logging:
+  level: INFO

@@ -1,23 +1,26 @@
+from sinks.base import Sink
 from sinks.clickhouse import ClickHouseSink
-# from sinks.ozone import OzoneSink
+from sinks.ozone import OzoneSink
+from sinks.postgres import PostgresSink
+
+_SINK_TYPES = {
+    "clickhouse": ClickHouseSink,
+    "postgres": PostgresSink,
+    "ozone": OzoneSink,
+}
 
 
-class SinkFactory:
+def build_sink(sink_type: str, sink_config: dict) -> Sink:
+    """
+    sink_config is the merge of application.yaml's connection block
+    (host/port/credentials) and the pipeline's own sink block
+    (table/columns/bucket/etc) - see registry.py.
+    """
+    sink_cls = _SINK_TYPES.get(sink_type)
 
-    _SINKS = {
-        "clickhouse": ClickHouseSink,
-        # "postgres": PostgresSink,
-        # "ozone": OzoneSink,
-    }
+    if sink_cls is None:
+        raise ValueError(
+            f"Unknown sink type '{sink_type}'. Known types: {list(_SINK_TYPES)}"
+        )
 
-    @classmethod
-    def create(cls, pipeline_config):
-
-        sink_type = pipeline_config.sink.type
-
-        sink_class = cls._SINKS.get(sink_type)
-
-        if sink_class is None:
-            raise ValueError(f"Unsupported sink: {sink_type}")
-
-        return sink_class(pipeline_config)
+    return sink_cls(**sink_config)

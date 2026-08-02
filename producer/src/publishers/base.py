@@ -4,12 +4,9 @@ from abc import ABC, abstractmethod
 class Publisher(ABC):
 
     @abstractmethod
-    def publish(self, message):
-        """
-        Publish a single message.
-        """
-        raise NotImplementedError
+    def publish(self, transaction):
+        pass
 
     @abstractmethod
     def close(self):
-        raise NotImplementedError
+        pass

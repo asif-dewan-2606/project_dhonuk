@@ -1,0 +1,157 @@
+pipelines:
+
+  - name: transaction_stream_to_ias_dfs_txn_log
+    enabled: true
+    topic: transaction_stream
+    batch:
+      size: 500
+      flush_interval_ms: 100
+      max_buffer_size: 5000
+    # Fields that arrive as ISO datetime strings and must become datetime objects
+    # before being written to the sink.
+    datetime_fields: [approval_datetime, created, updated]
+    sink:
+      type: clickhouse
+      table: analytics.ias_dfs_txn_log
+      columns:
+        - id
+        - sqn
+        - approval_date
+        - approval_datetime
+        - nr_number
+        - response_code
+        - status
+        - txn_type
+        - processing_code
+        - txn_type_d_c
+        - txn_cat
+        - pos_entry_mode
+        - par
+        - target_par
+        - txn_amt
+        - acc_blc
+        - acc_available_blc
+        - user_id
+        - customer_segment
+        - trust_level
+        - target_user_id
+        - target_customer_segment
+        - target_trust_level
+        - target_account_type
+        - account_id1
+        - created
+        - updated
+        - txn_id
+        - account_type
+        - txn_sub_type
+        - org_nr_number
+        - sync_flag
+        - rrnum
+        - stan
+
+  - name: oracle_txn_to_clickhouse
+
+    enabled: false
+
+    topic: oracle.
+
+    batch:
+      size: 500
+      flush_interval_ms: 100
+      max_buffer_size: 5000
+
+    sink:
+      type: clickhouse
+      table: analytics.ias_dfs_txn_log_test
+
+      columns:
+        - ID
+        - SQN
+        - APPROVAL_DATE
+        - APPROVAL_DATETIME
+        - NR_NUMBER
+        - RESPONSE_CODE
+        - STATUS
+        - TXN_TYPE
+        - PROCESSING_CODE
+        - TXN_TYPE_D_C
+        - TXN_CAT
+        - POS_ENTRY_MODE
+        - PAR
+        - TARGET_PAR
+        - TXN_AMT
+        - ACC_BLC
+        - ACC_AVAILABLE_BLC
+        - USER_ID
+        - CUSTOMER_SEGMENT
+        - TRUST_LEVEL
+        - TARGET_USER_ID
+        - TARGET_CUSTOMER_SEGMENT
+        - TARGET_TRUST_LEVEL
+        - TARGET_ACCOUNT_TYPE
+        - ACCOUNT_ID1
+        - CREATED
+        - UPDATED
+        - TXN_ID
+        - ACCOUNT_TYPE
+        - TXN_SUB_TYPE
+        - ORG_NR_NUMBER
+        - SYNC_FLAG
+        - RRNUM
+        - STAN
+
+  - name: transaction_generator_to_clickhouse
+
+    enabled: true
+
+    topic: txn_events
+
+    batch:
+      size: 500
+      flush_interval_ms: 100
+      max_buffer_size: 5000
+
+    datetime_fields:
+      - approval_datetime
+      - created
+      - updated
+
+    sink:
+      type: clickhouse
+      table: analytics.transaction_data_streaming
+
+      columns:
+        - id
+        - sqn
+        - approval_date
+        - approval_datetime
+        - nr_number
+        - response_code
+        - status
+        - txn_type
+        - processing_code
+        - txn_type_d_c
+        - txn_cat
+        - pos_entry_mode
+        - par
+        - target_par
+        - txn_amt
+        - acc_blc
+        - acc_available_blc
+        - user_id
+        - customer_segment
+        - trust_level
+        - target_user_id
+        - target_customer_segment
+        - target_trust_level
+        - target_account_type
+        - account_id1
+        - created
+        - updated
+        - txn_id
+        - account_type
+        - txn_sub_type
+        - org_nr_number
+        - sync_flag
+        - rrnum
+        - stan

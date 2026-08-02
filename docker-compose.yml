@@ -1,29 +1,5 @@
 name: dhonuk
 
-x-airflow-common: &airflow-common
-  image: dhonuk-airflow:3.1.6
-
-  env_file:
-    - .env
-  environment:
-    AIRFLOW_UID: "50000"
-    AIRFLOW_HOME: /opt/airflow
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
-    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-
-  volumes:
-    - ./airflow/dags:/opt/airflow/dags
-    - ./airflow/logs:/opt/airflow/logs
-    - ./airflow/plugins:/opt/airflow/plugins
-    - ./dbt:/opt/airflow/project/dbt
-  depends_on:
-    postgres-airflow:
-      condition: service_healthy
-  networks:
-    - dhonuk-network
-
 x-producer-common: &producer-common
   image: dhonuk-producer:1.0
 
@@ -54,25 +30,6 @@ x-consumer-common: &consumer-common
 
 services:
 
-  postgres-airflow:
-    image: postgres:16.9
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: airflow
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_airflow_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airflow"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - dhonuk-network
-
   kafka:
     image: apache/kafka:3.9.1
     restart: unless-stopped
@@ -93,7 +50,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      
+
       # Retention
       KAFKA_LOG_RETENTION_HOURS: 10
       KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
@@ -119,46 +76,43 @@ services:
     networks:
       - dhonuk-network
 
+  # Polls Oracle/Postgres directly via JDBC (no CDC/Debezium in front of
+  # them yet) and produces straight to Kafka. Connector configs live in
+  # producer/connectors/*.json - register them with producer/connectors/register.sh
+  # once this is up. Offsets are tracked internally by Connect (in the
+  # _connect-offsets topic below), so nothing here needs its own state file.
   kafka-connect:
     build:
       context: .
       dockerfile: images/kafka-connect/Dockerfile
-
     restart: unless-stopped
-
     depends_on:
       kafka:
         condition: service_started
-
     ports:
       - "8083:8083"
-
     environment:
       CONNECT_BOOTSTRAP_SERVERS: kafka:9092
-      CONNECT_REST_PORT: 8083
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
       CONNECT_GROUP_ID: dhonuk-connect
 
-      CONNECT_CONFIG_STORAGE_TOPIC: _connect_configs
-      CONNECT_OFFSET_STORAGE_TOPIC: _connect_offsets
-      CONNECT_STATUS_STORAGE_TOPIC: _connect_status
-
+      CONNECT_CONFIG_STORAGE_TOPIC: _connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _connect-status
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
 
       CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-
       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
 
-      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/etc/kafka-connect/jars
+      CONNECT_PLUGIN_PATH: /usr/share/confluent-hub-components
 
-      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
-
-    volumes:
-      - ./kafka/connect:/etc/kafka-connect/connectors
-      - ./kafka/plugins:/etc/kafka-connect/jars
+    # volumes:
+    #   # Oracle driver jar you download yourself (see images/kafka-connect/Dockerfile)
+    #   # - ./producer/connect-drivers:/usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/lib/oracle
 
     networks:
       - dhonuk-network
@@ -181,40 +135,6 @@ services:
     networks:
       - dhonuk-network
 
-  airflow-init:
-    <<: *airflow-common
-    command: >
-      bash -c "
-        airflow db migrate &&
-        airflow users create --username airflow --password airflow --firstname Airflow --lastname Admin --role Admin --email airflow@example.com
-      "
-
-  airflow-apiserver:
-    <<: *airflow-common
-    command: api-server
-    restart: unless-stopped
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
-    ports:
-      - "8085:8080"
-
-  airflow-scheduler:
-    <<: *airflow-common
-    command: scheduler
-    restart: unless-stopped
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
-
-  airflow-dag-processor:
-    <<: *airflow-common
-    command: dag-processor
-    restart: unless-stopped
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
-
   producer:
     <<: *producer-common
     build:
@@ -223,31 +143,35 @@ services:
 
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      KAFKA_TOPIC: sales_transactions
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-sales_transactions}
+      PYTHONPATH: /app/src
     volumes:
       - ./producer/src:/app/src
     command: python /app/src/main.py
-    
+
   consumer:
     <<: *consumer-common
+    restart: unless-stopped
 
     build:
       context: .
       dockerfile: images/consumer/Dockerfile
 
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      KAFKA_TOPIC: sales_transactions
-
-      CLICKHOUSE_HOST: clickhouse
-      CLICKHOUSE_PORT: 8123
-      CLICKHOUSE_DATABASE: analytics
-      CLICKHOUSE_USER: dhonuk
+      # Consumed by pipelines.yaml / application.yaml via ${VAR} interpolation
+      # (that substitution happens in config.py, at container startup - a
+      # different mechanism than compose's own ${VAR:-default} above, but
+      # both ultimately read from the same .env-sourced value).
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-sales_transactions}
       CLICKHOUSE_PASSWORD: dhonuk123
+      POSTGRES_USER: dhonuk
+      POSTGRES_PASSWORD: dhonuk123
+      OZONE_ENDPOINT: ""
+      OZONE_BUCKET: ""
+      PYTHONPATH: /app/src
 
     volumes:
       - ./consumer/src:/app/src
-      - ./consumer/config:/app/config
 
     command: python /app/src/main.py
 
@@ -257,6 +181,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_airflow_data:
   clickhouse_data:
   kafka_data:

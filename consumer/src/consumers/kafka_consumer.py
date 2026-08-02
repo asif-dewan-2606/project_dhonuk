@@ -1,50 +1,42 @@
+import logging
+
 from confluent_kafka import Consumer
 
-from config import config
+logger = logging.getLogger(__name__)
 
 
-class KafkaConsumer:
+class KafkaConsumerClient:
+    """
+    Thin wrapper around confluent-kafka Consumer.
 
-    def __init__(self, topics: list[str]):
+    Responsibilities: connect, subscribe, poll, commit, close.
+    Nothing about batching or sinks belongs here.
+    """
 
-        print("Bootstrap:", config.kafka.bootstrap_servers, flush=True)
-        print("Group:", config.kafka.consumer_group, flush=True)
-        print("Topics:", topics, flush=True)
-        print("Offset Reset:", config.kafka.auto_offset_reset, flush=True)
-
+    def __init__(self, bootstrap_servers: str, group_id: str, topic: str):
         self.consumer = Consumer(
             {
-                "bootstrap.servers": ",".join(config.kafka.bootstrap_servers),
-                "group.id": config.kafka.consumer_group,
-                "auto.offset.reset": config.kafka.auto_offset_reset,
-                "enable.auto.commit": config.kafka.enable_auto_commit,
+                "bootstrap.servers": bootstrap_servers,
+                "group.id": group_id,
+                "auto.offset.reset": "earliest",
+                "enable.auto.commit": False,
             }
         )
+        self.consumer.subscribe([topic])
+        self.topic = topic
+        logger.info("Subscribed to topic '%s' (group=%s)", topic, group_id)
 
-        print(f"Subscribing to: {topics}", flush=True)
-        self.consumer.subscribe(topics)
-        print("Subscribed.", flush=True)
+    def poll(self, timeout: float = 1.0):
+        return self.consumer.poll(timeout)
 
-    def consume(self, batch_size: int, timeout=None):
-
-        print("Calling Kafka consume...", flush=True)
-
-        timeout = timeout or (
-            config.consumer.poll_timeout_ms / 1000
-        )
-
-        return self.consumer.consume(
-            num_messages=batch_size,
-            timeout=timeout,
-        )
-
-    def commit(self, message):
-
-        self.consumer.commit(
-            message=message,
-            asynchronous=False
-        )
+    def commit(self):
+        self.consumer.commit(asynchronous=False)
 
     def close(self):
-
         self.consumer.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()

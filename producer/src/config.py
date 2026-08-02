@@ -1,11 +1,7 @@
-EVENTS_PER_SECOND = 300
-# PUBLISHER = "console"
-PUBLISHER = "kafka"
+import os
 
-STATUSES = [
-    "SUCCESS",
-    "FAILED"
-]
+EVENTS_PER_SECOND = int(os.getenv("EVENTS_PER_SECOND", 10))
+PUBLISHER = os.getenv("PUBLISHER", "kafka")
 
 MIN_CUSTOMER_ID = 1000000
 MAX_CUSTOMER_ID = 9999999
@@ -16,8 +12,8 @@ MAX_MERCHANT_ID = 9999
 MIN_AMOUNT = 10
 MAX_AMOUNT = 5000
 
-# Kafka
-KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
-KAFKA_TOPIC = "sales_transactions"
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+# Default topic
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "txn_events")
 
-SOURCE = "transaction"
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

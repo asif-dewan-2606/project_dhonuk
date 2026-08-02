@@ -1,3 +1,0 @@
-confluent-kafka
-faker
-clickhouse-connect

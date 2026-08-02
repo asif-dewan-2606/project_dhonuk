@@ -43,10 +43,8 @@ class Transaction:
     def to_dict(self):
         return asdict(self)
 
-
     def to_json(self):
         return json.dumps(
             self.to_dict(),
             default=lambda obj: obj.isoformat()
         )
-        
