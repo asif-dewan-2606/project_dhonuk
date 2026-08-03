@@ -1,3 +1,4 @@
 confluent-kafka==2.6.1
 clickhouse-connect==0.8.9
 PyYAML==6.0.2
+boto3==1.40.0

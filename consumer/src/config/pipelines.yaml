@@ -155,3 +155,25 @@ pipelines:
         - sync_flag
         - rrnum
         - stan
+
+  - name: transaction_stream_to_ozone
+
+    enabled: true
+
+    topic: transaction_stream
+
+    consumer_group: ozone-consumer
+
+    batch:
+      size: 10              # keep small for testing
+      flush_interval_ms: 5000
+      max_buffer_size: 100
+
+    sink:
+      type: ozone
+
+      bucket: raw
+
+      prefix: transaction_stream
+
+      extension: ndjson

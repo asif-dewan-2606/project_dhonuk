@@ -8,6 +8,9 @@ x-producer-common: &producer-common
   depends_on:
     kafka:
       condition: service_started
+
+    ozone-bootstrap:
+      condition: service_started
   networks:
     - dhonuk-network
 
@@ -22,6 +25,9 @@ x-consumer-common: &consumer-common
       condition: service_started
 
     clickhouse:
+      condition: service_started
+
+    ozone-bootstrap:
       condition: service_started
 
   networks:
@@ -135,6 +141,204 @@ services:
     networks:
       - dhonuk-network
 
+
+  scm:
+    image: apache/ozone:2.0.0
+    container_name: ozone-scm
+    restart: unless-stopped
+    command: ["ozone", "scm"]
+
+    environment:
+      OZONE-SITE.XML_hdds.datanode.dir: /data/hdds
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata
+      OZONE-SITE.XML_ozone.scm.names: scm
+      ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
+      OZONE-SITE.XML_ozone.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication.type: RATIS
+
+    ports:
+      - "9876:9876"
+
+    volumes:
+      - ozone_scm:/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9876 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - dhonuk-network
+
+  om:
+    image: apache/ozone:2.0.0
+    container_name: ozone-om
+    restart: unless-stopped
+    command: ["ozone", "om"]
+
+    environment:
+      OZONE-SITE.XML_hdds.datanode.dir: /data/hdds
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata
+      OZONE-SITE.XML_ozone.om.address: om
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.scm.client.address: scm
+      OZONE-SITE.XML_ozone.scm.block.client.address: scm
+      ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
+      OZONE-SITE.XML_ozone.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication.type: RATIS
+
+    ports:
+      - "9874:9874"
+
+    volumes:
+      - ozone_om:/data
+
+    depends_on:
+      scm:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9874 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - dhonuk-network
+
+
+  datanode:
+    image: apache/ozone:2.0.0
+    container_name: ozone-datanode
+    restart: unless-stopped
+    command: ["ozone", "datanode"]
+
+    environment:
+      OZONE-SITE.XML_hdds.datanode.dir: /data/hdds
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata
+      OZONE-SITE.XML_ozone.om.address: om
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.scm.client.address: scm
+      OZONE-SITE.XML_ozone.scm.block.client.address: scm
+      OZONE-SITE.XML_ozone.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication.type: RATIS
+
+    ports:
+      - "9882:9882"
+
+    volumes:
+      - ozone_dn:/data
+
+    depends_on:
+      scm:
+        condition: service_healthy
+      om:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9882 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - dhonuk-network
+  
+  ozone-s3g:
+    image: apache/ozone:2.0.0
+    container_name: ozone-s3g
+    restart: unless-stopped
+    command: ["ozone", "s3g"]
+
+    environment:
+      OZONE-SITE.XML_ozone.om.address: om
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication.type: RATIS
+
+    ports:
+      - "9878:9878"
+
+    depends_on:
+      om:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9878 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - dhonuk-network
+
+  ozone-bootstrap:
+    image: dhonuk-consumer:1.0
+    container_name: ozone-bootstrap
+
+    restart: "no"
+
+    env_file:
+      - .env
+
+    environment:
+      OZONE_ENDPOINT: http://ozone-s3g:9878
+      AWS_ACCESS_KEY_ID: ozone
+      AWS_SECRET_ACCESS_KEY: ozone
+
+    volumes:
+      - ./bootstrap:/app/bootstrap
+
+    command: python /app/bootstrap/ozone_bootstrap.py
+
+    depends_on:
+      ozone-s3g:
+        condition: service_started
+
+    networks:
+      - dhonuk-network
+
+  recon:
+    image: apache/ozone:2.0.0
+    container_name: ozone-recon
+    restart: unless-stopped
+    command: ["ozone", "recon"]
+
+    environment:
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata
+      OZONE-SITE.XML_ozone.om.address: om
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.scm.client.address: scm
+      OZONE-SITE.XML_ozone.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication: "1"
+      OZONE-SITE.XML_ozone.server.default.replication.type: RATIS
+
+    ports:
+      - "9888:9888"
+
+    volumes:
+      - ozone_recon:/data
+
+    depends_on:
+      scm:
+        condition: service_healthy
+      om:
+        condition: service_healthy
+
+    networks:
+      - dhonuk-network
+
   producer:
     <<: *producer-common
     build:
@@ -166,12 +370,16 @@ services:
       CLICKHOUSE_PASSWORD: dhonuk123
       POSTGRES_USER: dhonuk
       POSTGRES_PASSWORD: dhonuk123
-      OZONE_ENDPOINT: ""
-      OZONE_BUCKET: ""
+      OZONE_ENDPOINT: http://ozone-s3g:9878
+      OZONE_VOLUME: analytics
+      OZONE_BUCKET: raw
+      AWS_ACCESS_KEY_ID: ozone
+      AWS_SECRET_ACCESS_KEY: ozone
       PYTHONPATH: /app/src
 
     volumes:
       - ./consumer/src:/app/src
+      - ./bootstrap:/app/bootstrap
 
     command: python /app/src/main.py
 
@@ -183,3 +391,8 @@ networks:
 volumes:
   clickhouse_data:
   kafka_data:
+
+  ozone_scm:
+  ozone_om:
+  ozone_dn:
+  ozone_recon:
