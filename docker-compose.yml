@@ -151,11 +151,18 @@ services:
     environment:
       OZONE-SITE.XML_hdds.datanode.dir: /data/hdds
       OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata
+
       OZONE-SITE.XML_ozone.scm.names: scm
-      ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
+      OZONE-SITE.XML_ozone.scm.client.address: scm
+      OZONE-SITE.XML_ozone.scm.block.client.address: scm
+
       OZONE-SITE.XML_ozone.replication: "1"
       OZONE-SITE.XML_ozone.server.default.replication: "1"
       OZONE-SITE.XML_ozone.server.default.replication.type: RATIS
+
+      ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
+
+
 
     ports:
       - "9876:9876"
@@ -339,6 +346,50 @@ services:
     networks:
       - dhonuk-network
 
+  polaris-db:
+    image: postgres:16
+    container_name: polaris-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: polaris
+      POSTGRES_USER: polaris
+      POSTGRES_PASSWORD: polaris123
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - polaris_db:/var/lib/postgresql/data
+
+    networks:
+      - dhonuk-network
+
+  polaris:
+    image: apache/polaris:latest
+    container_name: polaris
+    restart: unless-stopped
+
+    depends_on:
+      - polaris-db
+
+    environment:
+      POLARIS_PERSISTENCE_TYPE: relational-jdbc
+
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://polaris-db:5432/polaris
+      QUARKUS_DATASOURCE_USERNAME: polaris
+      QUARKUS_DATASOURCE_PASSWORD: polaris123
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ozone
+      AWS_SECRET_ACCESS_KEY: ozone
+
+    ports:
+      - "8181:8181"
+
+    networks:
+      - dhonuk-network
+
   producer:
     <<: *producer-common
     build:
@@ -383,6 +434,78 @@ services:
 
     command: python /app/src/main.py
 
+  trino:
+    image: trinodb/trino:477
+    container_name: trino
+
+    restart: unless-stopped
+
+    ports:
+      - "8085:8080"
+
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+
+    depends_on:
+      - polaris
+
+    networks:
+      - dhonuk-network
+
+  spark:
+    build:
+      context: .
+      dockerfile: images/spark/Dockerfile
+
+    container_name: spark
+    restart: unless-stopped
+
+    tty: true
+    stdin_open: true
+
+    working_dir: /app
+
+    environment:
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ozone
+      AWS_SECRET_ACCESS_KEY: ozone
+
+    volumes:
+      - ./spark/src:/app/src
+      - ./spark/conf:/opt/spark/conf
+      - ./spark/jars:/opt/spark/jars/custom   # <-- add this back if your jars are on the host
+
+    command: tail -f /dev/null
+
+    depends_on:
+      polaris:
+        condition: service_started
+      ozone-s3g:
+        condition: service_started
+
+    networks:
+      - dhonuk-network
+  
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:latest
+    container_name: cloudbeaver
+
+    restart: unless-stopped
+
+    ports:
+      - "8978:8978"
+
+    volumes:
+      - cloudbeaver_data:/opt/cloudbeaver/workspace
+
+    depends_on:
+      - trino
+
+    networks:
+      - dhonuk-network
+    
+      
 
 networks:
   dhonuk-network:
@@ -396,3 +519,5 @@ volumes:
   ozone_om:
   ozone_dn:
   ozone_recon:
+  polaris_db:
+  cloudbeaver_data:

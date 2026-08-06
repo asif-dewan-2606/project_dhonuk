@@ -1,0 +1,19 @@
+spark:
+
+  app_name: dhonuk-spark
+
+  master: local[*]
+
+  log_level: WARN
+
+  checkpoint_root: s3a://raw/checkpoints
+
+  catalog:
+
+    name: polaris
+
+    type: rest
+
+    uri: http://polaris:8181/api/catalog
+
+    warehouse: s3://raw
