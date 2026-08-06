@@ -1,4 +1,4 @@
-from jobs.raw_to_bronze import RawToBronzeJob
+from jobs.bronze.transaction_stream import RawToBronzeJob
 
 
 class JobRegistry:
