@@ -1,27 +1,45 @@
 jobs:
 
   - name: raw_to_bronze
-
-    enabled: true
-
+    enabled: false
     mode: batch
 
     source:
-
       type: ozone
-
       path: transaction_stream
-
       format: json
 
     sink:
-
       type: iceberg
-
       namespace: bronze
-
       table: transaction_stream
 
     trigger:
-
       interval: 5m
+
+  - name: bronze_to_silver_cashin
+    enabled: true
+    mode: batch
+
+    source:
+      table: polaris.bronze.transaction_stream
+
+    sink:
+      table: polaris.silver.cashin_transaction
+
+    filter:
+      processing_code: "400000"
+  
+  
+  - name: bronze_to_silver_cashout
+    enabled: true
+    mode: batch
+
+    source:
+      table: polaris.bronze.transaction_stream
+
+    sink:
+      table: polaris.silver.cashout_transaction
+
+    filter:
+      processing_code: "280000"
