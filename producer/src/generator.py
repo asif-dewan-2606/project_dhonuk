@@ -12,7 +12,7 @@ class TransactionGenerator:
 
         return Transaction(
             id=random.randint(1, 10_000_000_000),
-            sqn=random.randint(1, 99999),
+            sqn=random.randint(1, 4),
             approval_date=int(now.strftime("%Y%m%d")),
             approval_datetime=now,
             nr_number=str(uuid.uuid4())[:16],

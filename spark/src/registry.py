@@ -1,7 +1,8 @@
 from jobs.bronze.transaction_stream import RawToBronzeJob
 from jobs.silver.cashin_transaction import BronzeToSilverCashinJob
 from jobs.silver.cashout_transaction import BronzeToSilverCashoutJob 
-
+from jobs.gold.cashin_summary import SilverToGoldCashinJob
+from jobs.gold.cashout_summary import SilverToGoldCashoutJob
 
 class JobRegistry:
 
@@ -10,6 +11,8 @@ class JobRegistry:
             "raw_to_bronze": RawToBronzeJob,
             "bronze_to_silver_cashin": BronzeToSilverCashinJob,
             "bronze_to_silver_cashout": BronzeToSilverCashoutJob,
+            "silver_to_gold_cashin": SilverToGoldCashinJob,
+            "silver_to_gold_cashout": SilverToGoldCashoutJob,
         }
 
     def get(self, name):

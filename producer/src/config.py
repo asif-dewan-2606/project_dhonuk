@@ -1,6 +1,6 @@
 import os
 
-EVENTS_PER_SECOND = int(os.getenv("EVENTS_PER_SECOND", 5))
+EVENTS_PER_SECOND = int(os.getenv("EVENTS_PER_SECOND", 20))
 PUBLISHER = os.getenv("PUBLISHER", "kafka")
 
 MIN_CUSTOMER_ID = 1000000

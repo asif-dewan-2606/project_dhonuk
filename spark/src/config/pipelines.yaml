@@ -1,7 +1,7 @@
 jobs:
 
   - name: raw_to_bronze
-    enabled: false
+    enabled: true
     mode: batch
 
     source:
@@ -43,3 +43,24 @@ jobs:
 
     filter:
       processing_code: "280000"
+  
+  - name: silver_to_gold_cashin
+    enabled: true
+    mode: batch
+
+    source:
+      table: polaris.silver.cashin_transaction
+
+    sink:
+      table: polaris.gold.cashin_summary
+
+  
+  - name: silver_to_gold_cashout
+    enabled: true
+    mode: batch
+
+    source:
+      table: polaris.silver.cashout_transaction
+
+    sink:
+      table: polaris.gold.cashout_summary
